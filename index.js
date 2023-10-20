@@ -3,6 +3,7 @@ const app = express()
 var cors = require('cors')
 const port = process.env.PORT || 4000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+var jwt = require('jsonwebtoken');
 
 // Midddleware
 app.use(cors());
@@ -17,6 +18,39 @@ const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@clu
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
 
+const verifyJWT = (req, res, next) => {
+
+    const authHeader = req.headers.authorization;
+
+    if (!authHeader) {
+        return res.status(401).send({ message: 'unauthorized access' });
+    }
+    else {
+        const token = authHeader.split(' ')[1];
+
+        jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+            if (err) {
+                console.log("Error")
+                res.status(401).send({ message: 'unauthorized access' });
+            }
+            else {
+                req.decoded = decoded;
+                next();
+            }
+        });
+    }
+}
+
+
+// send current user to bind it with JWT token.
+app.post('/jwt', async (req, res) => {
+    const data = req.body;
+    const token = jwt.sign(data, process.env.ACCESS_TOKEN_SECRET, { expiresIn: "1hr" });
+    res.send({ token });
+});
+
+
+
 async function run() {
 
     try {
@@ -24,6 +58,7 @@ async function run() {
 
         // Give website name as db name. And store data as collection name;
         const Products_Data = client.db("Serene").collection("Products_Data");
+        const AllComments = client.db("Serene").collection("Comments");
 
 
         // Find all the data "{}"; When we get the file we have to convert it to Array.
@@ -40,7 +75,6 @@ async function run() {
             const result = await Products_Data.insertOne(user);
             res.send(result);
         })
-
 
         // get specific product data.
         app.get('/product/:id', async (req, res) => {
@@ -63,7 +97,6 @@ async function run() {
             const product = await cursor.toArray();
             res.send(product);
         });
-
 
 
         // Update user info.
@@ -103,6 +136,76 @@ async function run() {
             res.send(result);
         })
 
+
+        // Insert all comments into the database.
+        app.post('/comments', async (req, res) => {
+            const comments = req.body;
+            const result = await AllComments.insertOne(comments);
+            res.send(result);
+        })
+
+        // get specific service all comments.
+        app.get('/comment/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { productid: (id) };
+            const cursor = await AllComments.find(query);
+            const comment = await cursor.toArray();
+            res.send(comment);
+        })
+
+        // get specific comments
+        app.get('/editComments/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const comment = await AllComments.findOne(query);
+            res.send(comment);
+        })
+
+
+        // This is query 
+        // myComment?email=mdjoy@gmail.com (if we need find something without id)
+        app.get('/myComment', verifyJWT, async (req, res) => {
+
+            const decoded = req.decoded;
+
+            if (decoded.email !== req.query.email) {
+                res.status(403).send({ message: 'unauthorized' });
+            }
+
+            let query = {};
+            if (req.query.email) {
+                query = {
+                    email: req.query.email
+                }
+            }
+            const cursor = AllComments.find(query);
+            const comment = await cursor.toArray();
+            res.send(comment);
+        });
+
+
+        // Update user info.
+        // upsert means if user not found then insert one. (sometimes no need upsert)
+        app.patch('/editComments/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const newComment = req.body;
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    comment: newComment.comment
+                },
+            };
+            const result = await AllComments.updateOne(filter, updateDoc, options);
+            res.send(result);
+        })
+
+        app.delete('/myComment/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const myComment = await AllComments.deleteOne(query);
+            res.send(myComment);
+        })
 
 
     } finally {
