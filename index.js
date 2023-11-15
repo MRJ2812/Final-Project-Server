@@ -60,6 +60,9 @@ async function run() {
         const Products_Data = client.db("Serene").collection("Products_Data");
         const AllComments = client.db("Serene").collection("Comments");
 
+        const appointmentOptionsCollections = client.db("Serene").collection("doctorDetail");
+        const bookingsCollection = client.db("Serene").collection("bookings");
+
 
         // Find all the data "{}"; When we get the file we have to convert it to Array.
         app.get('/products', async (req, res) => {
@@ -206,6 +209,45 @@ async function run() {
             const myComment = await AllComments.deleteOne(query);
             res.send(myComment);
         })
+
+        // // Find all the data "{}"; When we get the file we have to convert it to Array.
+        app.get('/appointmentOptions', async (req, res) => {
+            const date = req.query.date;
+            const query = {}
+            const options = await appointmentOptionsCollections.find(query).toArray();
+            const bookingQuery = { appointmentDate: date };
+            const alreadybooked = await bookingsCollection.find(bookingQuery).toArray();
+            options.forEach(option => {
+                const optionBooked = alreadybooked.filter(booked => booked.treatment === option.name);
+                const bookedSlot = optionBooked.map(book => book.slot);
+                const remainingSlot = option.slots.filter(slot => !bookedSlot.includes(slot));
+                option.slots = remainingSlot;
+            })
+            res.send(options);
+        })
+
+
+        // // Inset data into the database.
+        app.post('/bookings', async (req, res) => {
+            const booking = req.body;
+
+            const query = {
+                email: booking.email,
+                appointmentDate: booking.appointmentDate,
+                treatment: booking.treatment
+            }
+
+            const alreadyBooked = await bookingsCollection.find(query).toArray();
+
+            if (alreadyBooked.length) {
+                const message = `You already have a booking on ${booking.appointmentDate}`;
+                return res.send({ acknowledged: false, message })
+            }
+
+            const result = await bookingsCollection.insertOne(booking);
+            res.send(result);
+        })
+
 
 
     } finally {
