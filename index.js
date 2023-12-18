@@ -63,6 +63,22 @@ async function run() {
         const appointmentOptionsCollections = client.db("Serene").collection("doctorDetail");
         const bookingsCollection = client.db("Serene").collection("bookings");
 
+        const doctorsCollection = client.db("Serene").collection("doctors");
+        const usersCollection = client.db("Serene").collection("users");
+
+
+        app.post('/users', async (req, res) => {
+            const user = req.body;
+            const result = await usersCollection.insertOne(user);
+            res.send(result);
+        })
+
+        // Get all users
+        app.get('/allusers', async (req, res) => {
+            const query = {};
+            const allusers = await usersCollection.find(query).toArray();
+            res.send(allusers);
+        })
 
         // Find all the data "{}"; When we get the file we have to convert it to Array.
         app.get('/products', async (req, res) => {
@@ -167,13 +183,13 @@ async function run() {
 
         // This is query 
         // myComment?email=mdjoy@gmail.com (if we need find something without id)
-        app.get('/myComment', verifyJWT, async (req, res) => {
+        app.get('/myComment', async (req, res) => {
 
             const decoded = req.decoded;
 
-            if (decoded.email !== req.query.email) {
-                res.status(403).send({ message: 'unauthorized' });
-            }
+            // if (decoded.email !== req.query.email) {
+            //     res.status(403).send({ message: 'unauthorized' });
+            // }
 
             let query = {};
             if (req.query.email) {
@@ -227,7 +243,15 @@ async function run() {
         })
 
 
-        // // Inset data into the database.
+        // get only tratment name from appointmentOptionsCollections
+        app.get('/appointmentSpeciality', async (req, res) => {
+            const query = {}
+            const result = await appointmentOptionsCollections.find(query).project({ name: 1 }).toArray();
+            res.send(result);
+        })
+
+
+        // Inset data into the database.
         app.post('/bookings', async (req, res) => {
             const booking = req.body;
 
@@ -246,6 +270,42 @@ async function run() {
 
             const result = await bookingsCollection.insertOne(booking);
             res.send(result);
+        })
+
+        app.get('/bookings', async (req, res) => {
+            const email = req.query.email;
+            const authHeader = req.headers.authorization;
+            // const decodedEmial = req.decoded.email;
+
+            // if (email !== decodedEmial) {
+            //     return res.status(404).send({ message: 'forbidden access' })
+            // }
+
+
+            const query = { email: email };
+            const booking = await bookingsCollection.find(query).toArray();
+            res.send(booking);
+        })
+
+
+        // post new doctor information.
+        app.post('/doctorsCollection', async (req, res) => {
+            const doctor = req.body;
+            const result = await doctorsCollection.insertOne(doctor);
+            res.send(result);
+        })
+
+        app.get('/doctorsCollection', async (req, res) => {
+            const query = {};
+            const doctors = await doctorsCollection.find(query).toArray();
+            res.send(doctors);
+        })
+
+        app.delete('/doctorsCollection/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const doctors = await doctorsCollection.deleteOne(filter);
+            res.send(doctors);
         })
 
 
