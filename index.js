@@ -4,6 +4,7 @@ var cors = require('cors')
 const port = process.env.PORT || 4000;
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 var jwt = require('jsonwebtoken');
+const OpenAI = require('openai');
 
 // Midddleware
 app.use(cors());
@@ -16,6 +17,15 @@ require('dotenv').config()
 // This code is provided by mongoDB, when create a new connection.
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.swhr3qz.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+
+
+
+// Ai api
+const openai = new OpenAI({
+    organization: 'org-sdmzlG3pHIG2l5Vaty1lmueK',
+    apiKey: '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'
+});
+
 
 
 const verifyJWT = (req, res, next) => {
@@ -65,6 +75,10 @@ async function run() {
 
         const doctorsCollection = client.db("Serene").collection("doctors");
         const usersCollection = client.db("Serene").collection("users");
+
+        const postCollection = client.db("Serene").collection("postData");
+
+        const therapyDataCollection = client.db("Serene").collection("therapyData");
 
 
         app.post('/users', async (req, res) => {
@@ -287,6 +301,13 @@ async function run() {
             res.send(booking);
         })
 
+        app.delete('/bookings/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) }
+            const doctors = await bookingsCollection.deleteOne(filter);
+            res.send(doctors);
+        })
+
 
         // post new doctor information.
         app.post('/doctorsCollection', async (req, res) => {
@@ -309,6 +330,108 @@ async function run() {
         })
 
 
+        // app.get('/comment/:id', async (req, res) => {
+        //     const id = req.params.id;
+        //     const query = { productid: (id) };
+        //     const cursor = await postCollection.find(query);
+        //     const post = await cursor.toArray();
+        //     res.send(post);
+        // })
+
+        // Get all posts
+
+
+        app.get('/postCollection', async (req, res) => {
+            const query = {};
+            const allPosts = await postCollection.find(query).toArray();
+            res.send(allPosts);
+        })
+
+        app.get('/postCollection/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const comment = await postCollection.findOne(query);
+            res.send(comment);
+        })
+
+        // Post the posts
+        app.post('/postCollection', async (req, res) => {
+            const doctor = req.body;
+            const result = await postCollection.insertOne(doctor);
+            res.send(result);
+        })
+
+
+        app.patch('/postCollection/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const newComment = req.body;
+            try {
+                const result = await postCollection.updateOne(
+                    filter,
+                    {
+                        $push: {
+                            comments: newComment
+                        }
+                    }
+                );
+                res.send(result);
+            } catch (error) {
+                res.status(500).send('Error adding comment');
+            }
+        });
+
+
+        app.get('/postCollection/:id/comments', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+
+            try {
+                const post = await postCollection.findOne(filter);
+
+                if (!post) {
+                    return res.status(404).send('Post not found');
+                }
+                const comments = post.comments;
+
+                res.json(comments);
+            } catch (error) {
+                res.status(500).send('Error retrieving comments');
+            }
+        });
+
+
+
+        // get all therapy data
+        app.get('/therapyData', async (req, res) => {
+            const query = {};
+            const therapyData = await therapyDataCollection.find(query).toArray();
+            res.send(therapyData);
+        })
+
+        // Open Ai.
+        app.post("/chat", async (req, res) => {
+            const question = req.body.question;
+            try {
+                const response = await openai.completions.create({
+                    model: "gpt-3.5-turbo-instruct",
+                    prompt: question,
+                    max_tokens: 4000,
+                    temperature: 0,
+                });
+
+                const answer = response?.choices?.[0]?.text || "";
+                const array = answer.split("\n").filter((value) => value).map((value) => value.trim());
+
+                res.json({
+                    answer: array,
+                    Prompt: question
+                });
+            } catch (error) {
+                console.error("Error occurred:", error);
+                res.status(500).json({ error: "An error occurred while processing the request" });
+            }
+        });
 
     } finally {
         // We don't need to close the connnection.
