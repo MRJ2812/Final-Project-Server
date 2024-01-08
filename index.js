@@ -80,7 +80,7 @@ async function run() {
 
         const therapyDataCollection = client.db("Serene").collection("therapyData");
 
-
+        // Post  user
         app.post('/users', async (req, res) => {
             const user = req.body;
             const result = await usersCollection.insertOne(user);
@@ -93,6 +93,34 @@ async function run() {
             const allusers = await usersCollection.find(query).toArray();
             res.send(allusers);
         })
+
+
+        // get only seller
+        app.get('/seller', async (req, res) => {
+            const query = {};
+            const allUsers = await usersCollection.find(query).toArray();
+
+            const sellerUsers = allUsers.filter(user => user.roll === 'seller');
+
+            res.send(sellerUsers);
+        });
+
+
+        app.patch('/editUser/:id', async (req, res) => {
+            const id = req.params.id;
+            console.log(id);
+            const filter = { _id: new ObjectId(id) };
+            const photoURL = req.body;
+            const options = { upsert: true };
+            const updateDoc = {
+                $set: {
+                    photoURL: photoURL.url
+                },
+            };
+            const result = await usersCollection.updateOne(filter, updateDoc, options);
+            res.send(result);
+        })
+
 
         // Find all the data "{}"; When we get the file we have to convert it to Array.
         app.get('/products', async (req, res) => {
@@ -310,6 +338,12 @@ async function run() {
 
 
         // post new doctor information.
+        app.post('/doctorsinfo', async (req, res) => {
+            const doctor = req.body;
+            const result = await appointmentOptionsCollections.insertOne(doctor);
+            res.send(result);
+        })
+
         app.post('/doctorsCollection', async (req, res) => {
             const doctor = req.body;
             const result = await doctorsCollection.insertOne(doctor);
@@ -321,6 +355,20 @@ async function run() {
             const doctors = await doctorsCollection.find(query).toArray();
             res.send(doctors);
         })
+
+        app.get('/doctorsCollection/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const doctor = await doctorsCollection.findOne(query);
+
+            if (doctor) {
+                // Doctor found
+                res.send(true);
+            } else {
+                // Doctor not found
+                res.send(false);
+            }
+        });
 
         app.delete('/doctorsCollection/:id', async (req, res) => {
             const id = req.params.id;
