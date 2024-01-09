@@ -94,6 +94,13 @@ async function run() {
             res.send(allusers);
         })
 
+        app.delete('/allusers/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await usersCollection.deleteOne(query);
+            res.send(result);
+        })
+
 
         // get only seller
         app.get('/seller', async (req, res) => {
@@ -317,22 +324,33 @@ async function run() {
         app.get('/bookings', async (req, res) => {
             const email = req.query.email;
             const authHeader = req.headers.authorization;
-            // const decodedEmial = req.decoded.email;
-
-            // if (email !== decodedEmial) {
-            //     return res.status(404).send({ message: 'forbidden access' })
-            // }
-
 
             const query = { email: email };
             const booking = await bookingsCollection.find(query).toArray();
             res.send(booking);
         })
 
+        app.get('/docBookings', async (req, res) => {
+            const email = req.query.email;
+            const authHeader = req.headers.authorization;
+
+            const query = { docEmail: email };
+            const booking = await bookingsCollection.find(query).toArray();
+            res.send(booking);
+        })
+
+
+
         app.delete('/bookings/:id', async (req, res) => {
             const id = req.params.id;
             const filter = { _id: new ObjectId(id) }
             const doctors = await bookingsCollection.deleteOne(filter);
+            res.send(doctors);
+        })
+
+        app.get('/doctorsinfo', async (req, res) => {
+            const query = {};
+            const doctors = await appointmentOptionsCollections.find(query).toArray();
             res.send(doctors);
         })
 
@@ -344,17 +362,26 @@ async function run() {
             res.send(result);
         })
 
-        app.post('/doctorsCollection', async (req, res) => {
-            const doctor = req.body;
-            const result = await doctorsCollection.insertOne(doctor);
-            res.send(result);
-        })
+        app.delete('/doctorsinfo/:id', async (req, res) => {
 
-        app.get('/doctorsCollection', async (req, res) => {
-            const query = {};
-            const doctors = await doctorsCollection.find(query).toArray();
+            const id = req.params.id;
+            console.log(id);
+            const filter = { _id: new ObjectId(id) }
+            const doctors = await appointmentOptionsCollections.deleteOne(filter);
             res.send(doctors);
         })
+
+        // app.post('/doctorsCollection', async (req, res) => {
+        //     const doctor = req.body;
+        //     const result = await doctorsCollection.insertOne(doctor);
+        //     res.send(result);
+        // })
+
+        // app.get('/doctorsCollection', async (req, res) => {
+        //     const query = {};
+        //     const doctors = await doctorsCollection.find(query).toArray();
+        //     res.send(doctors);
+        // })
 
         app.get('/doctorsCollection/:email', async (req, res) => {
             const email = req.params.email;
@@ -370,12 +397,12 @@ async function run() {
             }
         });
 
-        app.delete('/doctorsCollection/:id', async (req, res) => {
-            const id = req.params.id;
-            const filter = { _id: new ObjectId(id) }
-            const doctors = await doctorsCollection.deleteOne(filter);
-            res.send(doctors);
-        })
+        // app.delete('/doctorsCollection/:id', async (req, res) => {
+        //     const id = req.params.id;
+        //     const filter = { _id: new ObjectId(id) }
+        //     const doctors = await doctorsCollection.deleteOne(filter);
+        //     res.send(doctors);
+        // })
 
 
         // app.get('/comment/:id', async (req, res) => {
