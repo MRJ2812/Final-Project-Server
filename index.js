@@ -27,6 +27,10 @@ const openai = new OpenAI({
 });
 
 
+// Mail
+const sendMail = require("./nodemail");
+app.post("/mail", sendMail);
+
 
 const verifyJWT = (req, res, next) => {
 
