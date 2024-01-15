@@ -287,7 +287,7 @@ async function run() {
             const bookingQuery = { appointmentDate: date };
             const alreadybooked = await bookingsCollection.find(bookingQuery).toArray();
             options.forEach(option => {
-                const optionBooked = alreadybooked.filter(booked => booked.treatment === option.name);
+                const optionBooked = alreadybooked.filter(booked => booked.docEmail === option.email);
                 const bookedSlot = optionBooked.map(book => book.slot);
                 const remainingSlot = option.slots.filter(slot => !bookedSlot.includes(slot));
                 option.slots = remainingSlot;
@@ -311,7 +311,7 @@ async function run() {
             const query = {
                 email: booking.email,
                 appointmentDate: booking.appointmentDate,
-                treatment: booking.treatment
+                docEmail: booking.docEmail
             }
 
             const alreadyBooked = await bookingsCollection.find(query).toArray();
@@ -375,6 +375,24 @@ async function run() {
             res.send(doctors);
         })
 
+
+
+
+        // check is Doc
+        app.get('/doctorsCollection/:email', async (req, res) => {
+            const email = req.params.email;
+            const query = { email: email };
+            const doctor = await appointmentOptionsCollections.findOne(query);
+
+            if (doctor) {
+                // Doctor found
+                res.send(true);
+            } else {
+                // Doctor not found
+                res.send(false);
+            }
+        });
+
         // app.post('/doctorsCollection', async (req, res) => {
         //     const doctor = req.body;
         //     const result = await doctorsCollection.insertOne(doctor);
@@ -386,20 +404,6 @@ async function run() {
         //     const doctors = await doctorsCollection.find(query).toArray();
         //     res.send(doctors);
         // })
-
-        app.get('/doctorsCollection/:email', async (req, res) => {
-            const email = req.params.email;
-            const query = { email: email };
-            const doctor = await doctorsCollection.findOne(query);
-
-            if (doctor) {
-                // Doctor found
-                res.send(true);
-            } else {
-                // Doctor not found
-                res.send(false);
-            }
-        });
 
         // app.delete('/doctorsCollection/:id', async (req, res) => {
         //     const id = req.params.id;
