@@ -6,12 +6,31 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 var jwt = require('jsonwebtoken');
 const OpenAI = require('openai');
 
+// DOTENV file
+require('dotenv').config()
+
+const SSLCommerzPayment = require("sslcommerz-lts");
+// post_data {
+//     get_all_data,
+//     post_data,
+//     specific_data,
+//     update_data,
+//     delete_data,
+// } = require("./Common/ResuableMethod");
+
+//ssl commerz functionality
+const store_id = process.env.STORE_ID;
+const store_passwd = process.env.STORE_PASSWORD;
+const is_live = false;
+
+
+
+
 // Midddleware
 app.use(cors());
 app.use(express.json());
 
-// DOTENV file
-require('dotenv').config()
+
 
 
 // This code is provided by mongoDB, when create a new connection.
@@ -515,6 +534,63 @@ async function run() {
                 res.status(500).json({ error: "An error occurred while processing the request" });
             }
         });
+
+
+
+        //sslcommerz init
+        app.post("/order", async (req, res) => {
+            const productData = req.body;
+            const tran_id = new Date().getTime();
+            const data = {
+                total_amount: productData?.price,
+                currency: productData?.currency,
+                tran_id: tran_id, // use unique tran_id for each api call
+                success_url: `https://interior-design-seven-psi.vercel.app/payment/success/${tran_id}`,
+                fail_url: `https://interior-design-seven-psi.vercel.app/payment/fail/${tran_id}`,
+                cancel_url: "https://interior-design-seven-psi.vercel.app/cancel",
+                ipn_url: "https://interior-design-seven-psi.vercel.app/ipn",
+                shipping_method: "Courier",
+                product_name: "Computer.",
+                product_category: "Electronic",
+                product_profile: "general",
+                cus_name: productData?.UserName,
+                cus_email: productData?.email,
+                cus_add1: productData?.address,
+                cus_add2: "Dhaka",
+                cus_city: "Dhaka",
+                cus_state: "Dhaka",
+                cus_postcode: "1000",
+                cus_country: "Bangladesh",
+                cus_phone: productData?.phoneNumber,
+                cus_fax: "01711111111",
+                ship_name: "Customer Name",
+                ship_add1: "Dhaka",
+                ship_add2: "Dhaka",
+                ship_city: "Dhaka",
+                ship_state: "Dhaka",
+                ship_postcode: "10",
+                ship_country: "Bangladesh",
+            };
+
+            const sslcz = new SSLCommerzPayment(store_id, store_passwd, is_live);
+
+            const finalOrder = {
+                ...productData,
+                paidStatus: false,
+                transactionID: tran_id,
+                date: new Date().toString(),
+            };
+
+            sslcz.init(data).then((apiResponse) => {
+                // Redirect the user to the payment gateway
+                let GatewayPageURL = apiResponse.GatewayPageURL;
+                res.send({ url: GatewayPageURL });
+            }).catch((error) => {
+                console.log(error?.message);
+            });
+        });
+
+
 
     } finally {
         // We don't need to close the connnection.
